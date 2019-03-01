@@ -22,6 +22,7 @@ from adb_uninstall.adb_package import Packages
 from adb_uninstall.constants import COLOR_LIGHT_GREEN, COLOR_LIGHT_RED
 from adb_uninstall.subprocess2 import iter_subprocess_output
 from adb_uninstall.tk_automenu import automenu
+from adb_uninstall.tk_statusbar import MultiStatusBar
 
 try:
     import tkinter as tk
@@ -34,6 +35,8 @@ except ImportError as err:
 
 
 log = logging.getLogger(__name__)
+
+STATUSBAR_INFO_KEY = "info"
 
 
 class ScrollableTreeview(ttk.Frame):
@@ -110,7 +113,7 @@ class PackageTable(ttk.Frame):
         self.tree.rowconfigure(0, weight=1)
 
         self.button_frame = tk.Frame(parent)
-        self.button_frame.grid(row=1, column=0, sticky=tk.NSEW)
+        self.button_frame.grid(row=1, column=0, sticky=tk.EW)
 
         self.buttons = []
         for no, (text, command) in enumerate(actions.items()):
@@ -162,6 +165,8 @@ class AdbUninstaller(tk.Tk):
         self.title("%s (GPL) v%s" % (self.__class__.__name__, __version__))
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
+
+        self.packages = Packages()
 
         menudata = (
             [
@@ -229,6 +234,13 @@ class AdbUninstaller(tk.Tk):
         p.grid(row=0, column=0, sticky=tk.NSEW)
         p.columnconfigure(0, weight=1)
         p.rowconfigure(0, weight=1)
+        ####################################################################################
+        # status bar
+
+        self.create_status_bar(row=1)
+        self.set_status_bar_info("loading...")
+
+        ####################################################################################
 
         self.origin_stdout_write = sys.stdout.write
         sys.stdout.write = sys.stderr.write = self.stdout_redirect_handler
@@ -236,6 +248,22 @@ class AdbUninstaller(tk.Tk):
         # reconnect on startup:
         self.after(1, self.reconnect)
         self.mainloop()
+
+    ###########################################################################
+    # Status bar
+
+    def create_status_bar(self, *, row):
+        self.status_bar = MultiStatusBar(self)
+        if sys.platform == "darwin":
+            # Insert some padding to avoid obscuring some of the statusbar
+            # by the resize widget.
+            self.status_bar.set_label("_padding1", "    ", side=tk.RIGHT)
+        self.status_bar.grid(row=row, column=0, sticky=tk.EW)
+
+    def set_status_bar_info(self, text):
+        self.status_bar.set_label(STATUSBAR_INFO_KEY, text)
+
+    ###########################################################################
 
     def output_callback(self, text, end="\n"):
         self.info_text.insert(tk.END, "%s%s" % (text, end))
@@ -249,8 +277,12 @@ class AdbUninstaller(tk.Tk):
         self.output_callback(text, end="")
 
     def subprocess(self, *args, timeout=10):
+        info = " ".join(args)
+        self.set_status_bar_info("%s..." % info)
         for line in iter_subprocess_output(*args, timeout=timeout):
             self.output_callback(line, end="")
+
+        self.set_status_bar_info("%s - done" % info)
 
     def apply(self):
         self.packages.apply(out=self.output_callback)
@@ -277,8 +309,8 @@ class AdbUninstaller(tk.Tk):
         packages = []
         try:
             for line in iter_subprocess_output("adb", "shell", "pm", "list", "packages"):
-                self.output_callback(line, end="")
                 if line.startswith("package:"):
+                    self.output_callback(".", end="")
                     package_name = line[8:].strip()
                     packages.append(package_name)
 
@@ -287,8 +319,7 @@ class AdbUninstaller(tk.Tk):
             return
 
         for no, package in enumerate(sorted(packages)):
-            self.output_callback(package)
-
+            # self.output_callback(package)
             self.package_table.add(package)
 
     # def new(self, *args):
