@@ -19,6 +19,8 @@ import sys
 import time
 import webbrowser
 
+from adb_uninstall import __version__
+
 try:
     import tkinter as tk
     from tkinter import messagebox, ttk
@@ -29,7 +31,6 @@ except ImportError as err:
     sys.exit(-1)
 
 
-from adb_uninstall import __version__
 
 log = logging.getLogger(__name__)
 
@@ -53,8 +54,9 @@ def verbose_check_call(*args):
 
 
 def iter_subprocess_output(*args, timeout=10):
+    print("_"*80)
     cmd = " ".join(args)
-    print("\tCall: %r\n" % cmd)
+    print("Call: %r" % cmd)
     proc = subprocess.Popen(args, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     end_time = time.time() + timeout
@@ -72,8 +74,10 @@ def iter_subprocess_output(*args, timeout=10):
     for line in outs:
         yield line
 
-    if proc.returncode:
-        raise subprocess.CalledProcessError(returncode=proc.returncode, cmd=cmd)
+    exit_code = proc.returncode
+    print("(Process finished with exit code %r)\n\n" % exit_code)
+    if exit_code:
+        raise subprocess.CalledProcessError(returncode=exit_code, cmd=cmd)
 
 
 def automenu(master, menudata):
@@ -388,29 +392,41 @@ class AdbUninstaller(tk.Tk):
         self.origin_stdout_write = sys.stdout.write
         sys.stdout.write = sys.stderr.write = self.stdout_redirect_handler
 
-        print("")
-
+        # reconnect on startup:
+        self.after(1, self.reconnect)
         self.mainloop()
 
-    def output_callback(self, text):
-        self.info_text.insert(tk.END, "%s\n" % text)
+    def output_callback(self, text, end="\n"):
+        self.info_text.insert(tk.END, "%s%s" % (text, end))
         self.info_text.see(tk.END)
+        self.update_idletasks()
 
     def stdout_redirect_handler(self, *args):
         self.origin_stdout_write(*args)
 
         text = " ".join([str(part) for part in args])
-        text = text.rstrip(" \n")
-        self.info_text.insert(tk.END, text)
-        self.info_text.see(tk.END)
+        self.output_callback(text, end="")
+
+    def subprocess(self, *args, timeout=10):
+        for line in iter_subprocess_output(*args, timeout=timeout):
+            self.output_callback(line, end="")
 
     def apply(self):
         self.packages.apply(out=self.output_callback)
 
+    def reconnect(self):
+        """
+        Kill adb server and reconnect device
+        """
+        self.output_callback("reconnect device...")
+        self.subprocess("adb", "kill-server")
+        self.subprocess("adb", "reconnect")
+        self.list_devices()
+
     def list_devices(self):
         self.output_callback("List devices via adb...")
         for line in iter_subprocess_output("adb", "devices", "-l", timeout=3):
-            self.output_callback(line)
+            self.output_callback(line, end="")
 
     def fetch(self, *args):
         self.output_callback("Fetch package list via adb...")
