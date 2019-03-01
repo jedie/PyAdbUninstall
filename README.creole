@@ -19,6 +19,20 @@ GNU General Public License v3 or later (GPLv3+)
 * https://github.com/jedie/PyAdbUninstall/
 * https://pypi.org/project/PyAdbUninstall/
 
+
+== notes
+
+You can't just install all listed apps. Some of them are essential system app and deinstall will brick or damages the OS.
+
+There is a list of apk package names that are "locked" in PyAdbUninstall
+
+But this list is incomplete!
+
+The list is {{{LOCKED_APPS}}} in {{{adb_uninstall/constants.py}}}
+
+Please help to complete this list by github pull request ;)
+
+
 == by hand
 
 Check / init adb connection:

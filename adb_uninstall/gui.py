@@ -18,7 +18,7 @@ import subprocess
 import sys
 
 from adb_uninstall import __version__
-from adb_uninstall.adb_package import Packages
+from adb_uninstall.adb_package import Packages, Package
 from adb_uninstall.constants import COLOR_LIGHT_GREEN, COLOR_LIGHT_RED
 from adb_uninstall.subprocess2 import iter_subprocess_output
 from adb_uninstall.tk_automenu import automenu
@@ -121,22 +121,33 @@ class PackageTable(ttk.Frame):
             button.grid(row=0, column=no, padx=10)
             self.buttons.append(button)
 
-    def add(self, package):
-        self.adb_packages.add(package_name=package)
-        row = self.tree.add(values=(package, "open play.google.com", "keep"))
+    def add(self, package_name):
+        package = self.adb_packages.add(package_name=package_name)
+
+        if package.locked:
+            info = Package.LOCKED
+            color = COLOR_LIGHT_RED
+        else:
+            info = Package.KEEP
+            color = COLOR_LIGHT_GREEN
+
+        row = self.tree.add(values=(package_name, "open play.google.com", info))
         assert isinstance(row, int)
 
-        self.tree.set_row_background_color(row=row, color=COLOR_LIGHT_GREEN)
+        self.tree.set_row_background_color(row=row, color=color)
 
     def call_back(self, item, row, column):
-        print("Clicked:", item, row, column)
+        log.debug("Clicked: %r %r %r", item, row, column)
 
         package = self.adb_packages.get_by_index(index=row)
-        print(package)
 
         if column == "#1":
             package.open_play_google()
         elif column in ("#0", "#2"):
+            if package.locked:
+                print("ignore locked app")
+                return
+
             if package.keep:
                 package.set_remove()
                 self.tree.set_row_background_color(row, color=COLOR_LIGHT_RED)

@@ -2,7 +2,7 @@ import logging
 import subprocess
 import webbrowser
 
-from adb_uninstall.constants import GOOGLE_PLAY_URL
+from adb_uninstall.constants import GOOGLE_PLAY_URL, LOCKED_APPS
 from adb_uninstall.subprocess2 import iter_subprocess_output
 
 log = logging.getLogger(__name__)
@@ -11,16 +11,23 @@ log = logging.getLogger(__name__)
 class Package:
     KEEP = "keep"
     REMOVE = "remove"
+    LOCKED = "locked"
 
     def __init__(self, *, package_name, index, action=None):
         self.package_name = package_name
         self.index = index
 
-        if action is None:
+        if package_name in LOCKED_APPS:
+            self.action = self.LOCKED
+        elif action is None:
             self.action = self.KEEP
         else:
             assert action in (self.KEEP, self.REMOVE)
             self.action = action
+
+    @property
+    def locked(self):
+        return self.action == self.LOCKED
 
     @property
     def keep(self):
@@ -34,6 +41,9 @@ class Package:
         self.action = self.KEEP
 
     def set_remove(self):
+        if self.action == self.LOCKED:
+            raise AssertionError("Can't remove locked app!")
+
         self.action = self.REMOVE
 
     def open_play_google(self):
@@ -58,6 +68,8 @@ class Packages:
 
         self.name2package[package_name] = package
         self.index2package[index] = package
+
+        return package
 
     def get_by_index(self, *, index):
         return self.index2package[index]
