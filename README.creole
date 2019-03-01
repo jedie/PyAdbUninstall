@@ -38,7 +38,9 @@ There is a list of apk package names that are "locked" in PyAdbUninstall
 
 But this list is incomplete!
 
-The list is {{{LOCKED_APPS}}} in {{{adb_uninstall/constants.py}}}
+The list is {{{LOCKED_APPS}}} in:
+
+ * [[https://github.com/jedie/PyAdbUninstall/blob/master/adb_uninstall/constants.py|adb_uninstall/constants.py]]
 
 Please help to complete this list by github pull request ;)
 
