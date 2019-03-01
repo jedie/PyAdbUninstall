@@ -16,10 +16,12 @@
 import logging
 import subprocess
 import sys
-import time
-import webbrowser
 
 from adb_uninstall import __version__
+from adb_uninstall.adb_package import Packages
+from adb_uninstall.constants import COLOR_LIGHT_GREEN, COLOR_LIGHT_RED
+from adb_uninstall.subprocess2 import iter_subprocess_output
+from adb_uninstall.tk_automenu import automenu
 
 try:
     import tkinter as tk
@@ -31,168 +33,7 @@ except ImportError as err:
     sys.exit(-1)
 
 
-
 log = logging.getLogger(__name__)
-
-GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=%s"
-COLOR_LIGHT_GREEN = "#e0ffe0"
-COLOR_LIGHT_RED = "#ffe0e0"
-OUTPUT_FILE = "packages.html"
-
-
-def verbose_check_output(*args):
-    """ 'verbose' version of subprocess.check_output() """
-    log.info("Call: %r" % " ".join(args))
-    output = subprocess.check_output(args, universal_newlines=True, stderr=subprocess.STDOUT)
-    return output
-
-
-def verbose_check_call(*args):
-    """ 'verbose' version of subprocess.check_call() """
-    print("\tCall: %r\n" % " ".join(args))
-    subprocess.check_call(args, universal_newlines=True)
-
-
-def iter_subprocess_output(*args, timeout=10):
-    print("_"*80)
-    cmd = " ".join(args)
-    print("Call: %r" % cmd)
-    proc = subprocess.Popen(args, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-    end_time = time.time() + timeout
-    for line in iter(proc.stdout.readline, ""):
-        yield line
-
-        if time.time() > end_time:
-            raise subprocess.TimeoutExpired(args, timeout)
-
-    timeout = end_time - time.time()
-    if timeout < 1:
-        timeout = 1
-
-    outs, errs = proc.communicate(timeout=timeout)
-    for line in outs:
-        yield line
-
-    exit_code = proc.returncode
-    print("(Process finished with exit code %r)\n\n" % exit_code)
-    if exit_code:
-        raise subprocess.CalledProcessError(returncode=exit_code, cmd=cmd)
-
-
-def automenu(master, menudata):
-    def prepstr(label, used):
-        """
-        Based on prepstr() from python/Lib/idlelib/EditorWindow.py
-        Helper to extract the underscore from a string, e.g.
-        prepstr("Co_py") returns (2, "Copy").
-        Check if the used character is unique in the menu part.
-        """
-        i = label.find("_")
-        if i >= 0:
-            label = label[:i] + label[i + 1 :]
-
-            char = label[i]
-            assert char not in used, ("underline %r used in %r is not unique in this menu part!") % (char, label)
-            used.append(char)
-
-        return i, label
-
-    # Add a menubar to root
-    menubar = tk.Menu(master)
-    master.config(menu=menubar)
-
-    used_topunderline = []
-    for toplabel, menuitems in menudata:
-        # add new main menu point
-        menu = tk.Menu(menubar, tearoff=False)
-        underline, toplabel = prepstr(toplabel, used_topunderline)
-        menubar.add_cascade(label=toplabel, menu=menu, underline=underline)
-
-        # add all sub menu points
-        used_underlines = []
-        for index, menudata in enumerate(menuitems):
-            if not menudata:
-                menu.add_separator()
-                continue
-
-            label, keycode, command = menudata
-
-            underline, label = prepstr(label, used_underlines)
-
-            menu.add_command(label=label, underline=underline, command=command)
-            if keycode:
-                menu.entryconfig(index, accelerator=keycode)
-                master.bind("<" + keycode + ">", command)
-
-
-class Package:
-    KEEP = "keep"
-    REMOVE = "remove"
-
-    def __init__(self, *, package_name, index, action=None):
-        self.package_name = package_name
-        self.index = index
-
-        if action is None:
-            self.action = self.KEEP
-        else:
-            assert action in (self.KEEP, self.REMOVE)
-            self.action = action
-
-    @property
-    def keep(self):
-        return self.action == self.KEEP
-
-    @property
-    def remove(self):
-        return self.action == self.REMOVE
-
-    def set_keep(self):
-        self.action = self.KEEP
-
-    def set_remove(self):
-        self.action = self.REMOVE
-
-    def open_play_google(self):
-        webbrowser.open_new_tab(GOOGLE_PLAY_URL % self.package_name)
-
-    def __str__(self):
-        return "%i %r %r" % (self.index, self.action, self.package_name)
-
-    def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, self.__str__())
-
-
-class Packages:
-    def __init__(self):
-        self.name2package = {}
-        self.index2package = {}
-
-    def add(self, *, package_name, action=None):
-        index = len(self.name2package)
-
-        package = Package(package_name=package_name, index=index, action=action)
-
-        self.name2package[package_name] = package
-        self.index2package[index] = package
-
-    def get_by_index(self, *, index):
-        return self.index2package[index]
-
-    def apply(self, out):
-        for package in self.index2package.values():
-            if package.remove:
-                package_name = package.package_name
-                out("Remove: %r" % package_name)
-
-                try:
-                    for line in iter_subprocess_output(
-                        "adb", "shell", "pm", "uninstall", "--user", "0", package_name, timeout=3
-                    ):
-                        out(line)
-                except subprocess.CalledProcessError as err:
-                    out("ERROR: %s" % err)
 
 
 class ScrollableTreeview(ttk.Frame):
@@ -364,7 +205,7 @@ class AdbUninstaller(tk.Tk):
 
         actions = {
             "list devices": self.list_devices,
-            "fetch package": self.fetch,
+            "fetch package": self.fetch_package_list,
             "save selection": self.destroy,
             "Apply": self.apply,
             "Exit": self.destroy,
@@ -421,20 +262,22 @@ class AdbUninstaller(tk.Tk):
         self.output_callback("reconnect device...")
         self.subprocess("adb", "kill-server")
         self.subprocess("adb", "reconnect")
+
         self.list_devices()
+        self.fetch_package_list()
 
     def list_devices(self):
         self.output_callback("List devices via adb...")
-        for line in iter_subprocess_output("adb", "devices", "-l", timeout=3):
-            self.output_callback(line, end="")
+        self.subprocess("adb", "wait-for-usb-device", timeout=10)
+        self.subprocess("adb", "devices", "-l", timeout=3)
 
-    def fetch(self, *args):
+    def fetch_package_list(self, *args):
         self.output_callback("Fetch package list via adb...")
 
         packages = []
         try:
             for line in iter_subprocess_output("adb", "shell", "pm", "list", "packages"):
-                self.output_callback(line)
+                self.output_callback(line, end="")
                 if line.startswith("package:"):
                     package_name = line[8:].strip()
                     packages.append(package_name)
