@@ -2,6 +2,11 @@
 
 Thinker GUI for uninstall Android bloatware Apps via "adb" without root.
 
+ * activate "devloper mode"
+ * install Android Debug Bridge (e.g.: {{{sudo apt install adb}}})
+ * connect device via USB
+ * start {{{adb_uninstall}}}
+
 See also:
 
  * de: https://www.kuketz-blog.de/android-system-apps-ohne-root-loeschen/
@@ -13,6 +18,42 @@ GNU General Public License v3 or later (GPLv3+)
 
 * https://github.com/jedie/PyAdbUninstall/
 * https://pypi.org/project/PyAdbUninstall/
+
+== by hand
+
+Check / init adb connection:
+{{{
+# Just show version information:
+$ adb version
+Android Debug Bridge version 1.0.36
+Revision 1:7.0.0+r33-2
+
+# List of devices attached:
+$ adb devices -l
+
+# kill the adb server if it is running:
+$ adb kill-server
+
+# Kick current connection from host side and make it reconnect:
+$ adb reconnect
+}}}
+
+
+List all installed apk packages:
+
+{{{
+$ adb shell pm list packages
+}}}
+
+
+Uninstall one apk package:
+
+{{{
+$ pm uninstall -k --user 0 <packagname>
+}}}
+
+* {{{-k}}} - keep the data and cache directories
+* {{{--user 0}}} - Deinstall only for current user
 
 
 == dev. startup
@@ -29,6 +70,6 @@ GNU General Public License v3 or later (GPLv3+)
 ~/PyAdbUninstall$ source bin/activate
 
 # Start GUI:
-(.virtualenv) ~/PyAdbUninstall$ pyresizer
+(.virtualenv) ~/PyAdbUninstall$ adb_uninstall
 }}}
 
