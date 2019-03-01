@@ -1,0 +1,34 @@
+== PyAdbUninstall
+
+Thinker GUI for uninstall Android bloatware Apps via "adb" without root.
+
+See also:
+
+ * de: https://www.kuketz-blog.de/android-system-apps-ohne-root-loeschen/
+ * en: https://forum.xda-developers.com/honor-6x/how-to/guide-list-bloat-software-emui-safe-to-t3700814
+
+
+created 2019 by Jens Diemer
+GNU General Public License v3 or later (GPLv3+)
+
+* https://github.com/jedie/PyAdbUninstall/
+* https://pypi.org/project/PyAdbUninstall/
+
+
+== dev. startup
+
+{{{
+# clone repository from github:
+~$ git clone https://github.com/jedie/PyAdbUninstall.git
+
+# create virtualenv
+~$ cd PyAdbUninstall
+~/PyAdbUninstall$ ./create_env.sh
+
+# activate virtualenv
+~/PyAdbUninstall$ source bin/activate
+
+# Start GUI:
+(.virtualenv) ~/PyAdbUninstall$ pyresizer
+}}}
+
