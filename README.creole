@@ -22,7 +22,17 @@ GNU General Public License v3 or later (GPLv3+)
 
 == notes
 
-You can't just install all listed apps. Some of them are essential system app and deinstall will brick or damages the OS.
+You can't just install all listed apps. Some of them are essential system app and deinstall will brick or damages the OS!
+
+There are two modes:
+
+ * {{{uninstall apps}}} - Will deinstall the package for the current user
+ * {{{deactivate apps}}} - Will only deactivate the package for the current user
+
+It's safer to just deactivate the apps ;)
+
+
+=== uninstall / locked apps
 
 There is a list of apk package names that are "locked" in PyAdbUninstall
 
@@ -33,7 +43,7 @@ The list is {{{LOCKED_APPS}}} in {{{adb_uninstall/constants.py}}}
 Please help to complete this list by github pull request ;)
 
 
-== by hand
+== package actions by hand via adb
 
 Check / init adb connection:
 {{{
@@ -57,6 +67,13 @@ List all installed apk packages:
 
 {{{
 $ adb shell pm list packages
+}}}
+
+
+Deactivate one apk package:
+
+{{{
+$ adb shell pm disable-user <packagname>
 }}}
 
 

@@ -18,8 +18,8 @@ import subprocess
 import sys
 
 from adb_uninstall import __version__
-from adb_uninstall.adb_package import Packages, Package
-from adb_uninstall.constants import COLOR_LIGHT_GREEN, COLOR_LIGHT_RED
+from adb_uninstall.adb_package import Package, Packages
+from adb_uninstall.constants import COLOR_GREY_RED, COLOR_LIGHT_GREEN, COLOR_LIGHT_RED
 from adb_uninstall.subprocess2 import iter_subprocess_output
 from adb_uninstall.tk_automenu import automenu
 from adb_uninstall.tk_statusbar import MultiStatusBar
@@ -126,7 +126,7 @@ class PackageTable(ttk.Frame):
 
         if package.locked:
             info = Package.LOCKED
-            color = COLOR_LIGHT_RED
+            color = COLOR_GREY_RED
         else:
             info = Package.KEEP
             color = COLOR_LIGHT_GREEN
@@ -223,7 +223,8 @@ class AdbUninstaller(tk.Tk):
             "list devices": self.list_devices,
             "fetch package": self.fetch_package_list,
             "save selection": self.destroy,
-            "Apply": self.apply,
+            "uninstall apps": self.uninstall_apps,
+            "deactivate apps": self.deactivate_apps,
             "Exit": self.destroy,
         }
 
@@ -290,13 +291,34 @@ class AdbUninstaller(tk.Tk):
     def subprocess(self, *args, timeout=10):
         info = " ".join(args)
         self.set_status_bar_info("%s..." % info)
-        for line in iter_subprocess_output(*args, timeout=timeout):
-            self.output_callback(line, end="")
+        try:
+            for line in iter_subprocess_output(*args, timeout=timeout):
+                self.output_callback(line, end="")
+        except subprocess.CalledProcessError as err:
+            print("ERROR: %s" % err)
+            self.set_status_bar_info("%s - ERROR" % info)
+        else:
+            self.set_status_bar_info("%s - done" % info)
 
-        self.set_status_bar_info("%s - done" % info)
+    def _uninstall(self, package_name):
+        print("Uninstall app: %r" % package_name)
+        self.subprocess("adb", "shell", "pm", "uninstall", "--user", "0", package_name, timeout=3)
 
-    def apply(self):
-        self.packages.apply(out=self.output_callback)
+    def _disable_user(self, package_name):
+        print("Disable app: %r" % package_name)
+        self.subprocess("adb", "shell", "pm", "disable-user", package_name, timeout=3)
+
+    def _action(self, action_func):
+        packages = self.packages.index2package.values()
+        for package in packages:
+            if package.remove:
+                action_func(package_name=package.package_name)
+
+    def uninstall_apps(self):
+        self._action(action_func=self._uninstall)
+
+    def deactivate_apps(self):
+        self._action(action_func=self._disable_user)
 
     def reconnect(self):
         """

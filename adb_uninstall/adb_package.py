@@ -74,16 +74,4 @@ class Packages:
     def get_by_index(self, *, index):
         return self.index2package[index]
 
-    def apply(self, out):
-        for package in self.index2package.values():
-            if package.remove:
-                package_name = package.package_name
-                out("Remove: %r" % package_name)
 
-                try:
-                    for line in iter_subprocess_output(
-                        "adb", "shell", "pm", "uninstall", "--user", "0", package_name, timeout=3
-                    ):
-                        out(line)
-                except subprocess.CalledProcessError as err:
-                    out("ERROR: %s" % err)
