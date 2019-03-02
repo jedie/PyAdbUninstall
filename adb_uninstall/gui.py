@@ -333,7 +333,12 @@ class AdbUninstaller(tk.Tk):
 
     def list_devices(self):
         self.output_callback("List devices via adb...")
-        self.subprocess("adb", "wait-for-usb-device", timeout=10)
+        try:
+            self.subprocess("adb", "wait-for-usb-device", timeout=5)
+        except subprocess.TimeoutExpired as err:
+            print("Error: %s" % err)
+            print("Maybe 'USB Debugging' is not enabled on device?!?")
+
         self.subprocess("adb", "devices", "-l", timeout=3)
 
     def fetch_package_list(self, *args):

@@ -2,7 +2,8 @@
 
 Thinker GUI for uninstall Android bloatware Apps via "adb" without root.
 
- * activate "devloper mode"
+ * activate "Developer Options"
+ * enable "USB Debugging"
  * install Android Debug Bridge (e.g.: {{{sudo apt install adb}}})
  * connect device via USB
  * start {{{adb_uninstall}}}
