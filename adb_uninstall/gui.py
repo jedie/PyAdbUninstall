@@ -14,13 +14,14 @@
 """
 
 import logging
+import re
 import subprocess
 import sys
 
 from adb_uninstall import __version__
 from adb_uninstall.adb_package import Package, Packages
 from adb_uninstall.constants import COLOR_GREY_RED, COLOR_LIGHT_GREEN, COLOR_LIGHT_RED
-from adb_uninstall.subprocess2 import iter_subprocess_output
+from adb_uninstall.subprocess2 import verbose_check_output
 from adb_uninstall.tk_automenu import automenu
 from adb_uninstall.tk_statusbar import MultiStatusBar
 
@@ -37,6 +38,7 @@ except ImportError as err:
 log = logging.getLogger(__name__)
 
 STATUSBAR_INFO_KEY = "info"
+STATUSBAR_DEVICE_KEY = "device"
 
 
 class ScrollableTreeview(ttk.Frame):
@@ -139,7 +141,10 @@ class PackageTable(ttk.Frame):
     def call_back(self, item, row, column):
         log.debug("Clicked: %r %r %r", item, row, column)
 
+        # FIXME: how to ignore click on table headline items?!?
+
         package = self.adb_packages.get_by_index(index=row)
+        log.debug("Clicked on package: %r", package)
 
         if column == "#1":
             package.open_play_google()
@@ -255,7 +260,8 @@ class AdbUninstaller(tk.Tk):
         ####################################################################################
 
         self.origin_stdout_write = sys.stdout.write
-        sys.stdout.write = sys.stderr.write = self.stdout_redirect_handler
+        sys.stdout.write = self.stdout_redirect_handler
+        sys.stderr.write = self.stdout_redirect_handler
 
         # reconnect on startup:
         self.after(1, self.reconnect)
@@ -275,6 +281,9 @@ class AdbUninstaller(tk.Tk):
     def set_status_bar_info(self, text):
         self.status_bar.set_label(STATUSBAR_INFO_KEY, text)
 
+    def set_device_bar_info(self, text):
+        self.status_bar.set_label(STATUSBAR_DEVICE_KEY, text)
+
     ###########################################################################
 
     def output_callback(self, text, end="\n"):
@@ -291,14 +300,17 @@ class AdbUninstaller(tk.Tk):
     def subprocess(self, *args, timeout=10):
         info = " ".join(args)
         self.set_status_bar_info("%s..." % info)
+
+        output = None
         try:
-            for line in iter_subprocess_output(*args, timeout=timeout):
-                self.output_callback(line, end="")
+            output = verbose_check_output(*args, timeout=timeout)
         except subprocess.CalledProcessError as err:
             print("ERROR: %s" % err)
             self.set_status_bar_info("%s - ERROR" % info)
         else:
             self.set_status_bar_info("%s - done" % info)
+
+        return output
 
     def _uninstall(self, package_name):
         print("Uninstall app: %r" % package_name)
@@ -324,7 +336,8 @@ class AdbUninstaller(tk.Tk):
         """
         Kill adb server and reconnect device
         """
-        self.output_callback("reconnect device...")
+        self.output_callback("_" * 80)
+        self.output_callback("Reconnect device...")
         self.subprocess("adb", "kill-server")
         self.subprocess("adb", "reconnect")
 
@@ -332,6 +345,7 @@ class AdbUninstaller(tk.Tk):
         self.fetch_package_list()
 
     def list_devices(self):
+        self.output_callback("_" * 80)
         self.output_callback("List devices via adb...")
         try:
             self.subprocess("adb", "wait-for-usb-device", timeout=5)
@@ -339,22 +353,51 @@ class AdbUninstaller(tk.Tk):
             print("Error: %s" % err)
             print("Maybe 'USB Debugging' is not enabled on device?!?")
 
-        self.subprocess("adb", "devices", "-l", timeout=3)
+        output = self.subprocess("adb", "devices", "-l", timeout=3)
+        # print(repr(output))
+        self.output_callback(output)
+
+        # example output e.g.:
+        #
+        # 'List of devices attached\nXYZ1234             device usb:3-10.4 product:foo model:bar device:foobar\n\n'
+
+        if "attached" not in output:
+            print("Output error :(")
+            return
+
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+
+        # e.g.:
+        # ['List of devices attached', 'XYZ1234             device usb:3-10.4 product:foo model:bar device:foobar']
+
+        if len(lines) != 2:
+            print("ERROR: Please connect only *one* device!")
+            return
+
+        devices_info = lines[1]
+        devices_info = re.sub(r"\s{2,}", " - ", devices_info)
+
+        # e.g.: "XYZ1234 - device usb:3-10.4 product:foo model:bar device:foobar"
+
+        self.set_device_bar_info(devices_info)
 
     def fetch_package_list(self, *args):
+        self.output_callback("_" * 80)
         self.output_callback("Fetch package list via adb...")
 
         packages = []
-        try:
-            for line in iter_subprocess_output("adb", "shell", "pm", "list", "packages"):
-                if line.startswith("package:"):
-                    self.output_callback(".", end="")
-                    package_name = line[8:].strip()
-                    packages.append(package_name)
-
-        except subprocess.CalledProcessError as err:
-            self.output_callback("ERROR: %s" % err)
+        output = self.subprocess("adb", "shell", "pm", "list", "packages", timeout=10)
+        if not output:
+            print("no process output")
             return
+
+        for line in output.splitlines():
+            if line.startswith("package:"):
+                self.output_callback(".", end="")
+                package_name = line[8:].strip()
+                packages.append(package_name)
+
+        self.output_callback("\n", end="")
 
         for no, package in enumerate(sorted(packages)):
             # self.output_callback(package)

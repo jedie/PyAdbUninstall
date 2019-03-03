@@ -3,7 +3,6 @@ import subprocess
 import webbrowser
 
 from adb_uninstall.constants import GOOGLE_PLAY_URL, LOCKED_APPS
-from adb_uninstall.subprocess2 import iter_subprocess_output
 
 log = logging.getLogger(__name__)
 
@@ -73,5 +72,3 @@ class Packages:
 
     def get_by_index(self, *, index):
         return self.index2package[index]
-
-
