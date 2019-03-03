@@ -88,7 +88,7 @@ $ adb shell pm disable-user <packagname>
 Uninstall one apk package:
 
 {{{
-$ pm uninstall -k --user 0 <packagname>
+$ adb shell pm uninstall -k --user 0 <packagname>
 }}}
 
 * {{{-k}}} - keep the data and cache directories
