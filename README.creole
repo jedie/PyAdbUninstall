@@ -21,6 +21,11 @@ GNU General Public License v3 or later (GPLv3+)
 * https://pypi.org/project/PyAdbUninstall/
 
 
+== PyAdbUninstall v0.2.0.png ==
+
+{{https://raw.githubusercontent.com/jedie/jedie.github.io/master/screenshots/PyAdbUninstaller/2019-03-03 PyAdbUninstall v0.2.0.png|2019-03-03 PyAdbUninstall v0.2.0.png}}
+
+
 == notes
 
 You can't just install all listed apps. Some of them are essential system app and deinstall will brick or damages the OS!
