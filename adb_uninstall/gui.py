@@ -21,9 +21,10 @@ import sys
 from adb_uninstall import __version__
 from adb_uninstall.adb_package import Package, Packages
 from adb_uninstall.constants import COLOR_GREY_RED, COLOR_LIGHT_GREEN, COLOR_LIGHT_RED
-from adb_uninstall.subprocess2 import verbose_check_output
 from adb_uninstall.tk_automenu import automenu
 from adb_uninstall.tk_statusbar import MultiStatusBar
+from adb_uninstall.utils.redirect import RedirectStdoutStderr
+from adb_uninstall.utils.subprocess2 import verbose_check_output
 
 try:
     import tkinter as tk
@@ -226,8 +227,8 @@ class AdbUninstaller(tk.Tk):
 
         actions = {
             "list devices": self.list_devices,
-            "fetch package": self.fetch_package_list,
-            "save selection": self.destroy,
+            # "fetch package": self.fetch_package_list,
+            # "save selection": self.destroy,
             "uninstall apps": self.uninstall_apps,
             "deactivate apps": self.deactivate_apps,
             "Exit": self.destroy,
@@ -251,6 +252,7 @@ class AdbUninstaller(tk.Tk):
         p.grid(row=0, column=0, sticky=tk.NSEW)
         p.columnconfigure(0, weight=1)
         p.rowconfigure(0, weight=1)
+
         ####################################################################################
         # status bar
 
@@ -258,10 +260,6 @@ class AdbUninstaller(tk.Tk):
         self.set_status_bar_info("loading...")
 
         ####################################################################################
-
-        self.origin_stdout_write = sys.stdout.write
-        sys.stdout.write = self.stdout_redirect_handler
-        sys.stderr.write = self.stdout_redirect_handler
 
         # reconnect on startup:
         self.after(1, self.reconnect)
@@ -280,9 +278,11 @@ class AdbUninstaller(tk.Tk):
 
     def set_status_bar_info(self, text):
         self.status_bar.set_label(STATUSBAR_INFO_KEY, text)
+        self.update_idletasks()
 
     def set_device_bar_info(self, text):
         self.status_bar.set_label(STATUSBAR_DEVICE_KEY, text)
+        self.update_idletasks()
 
     ###########################################################################
 
@@ -292,8 +292,7 @@ class AdbUninstaller(tk.Tk):
         self.update_idletasks()
 
     def stdout_redirect_handler(self, *args):
-        self.origin_stdout_write(*args)
-
+        # log.debug("redirect: %r", args)
         text = " ".join([str(part) for part in args])
         self.output_callback(text, end="")
 
@@ -303,21 +302,29 @@ class AdbUninstaller(tk.Tk):
 
         output = None
         try:
-            output = verbose_check_output(*args, timeout=timeout)
+            with RedirectStdoutStderr(
+                stdout_write=self.stdout_redirect_handler, stderr_write=self.stdout_redirect_handler, tee=True
+            ):
+                output = verbose_check_output(*args, timeout=timeout)
         except subprocess.CalledProcessError as err:
             print("ERROR: %s" % err)
             self.set_status_bar_info("%s - ERROR" % info)
         else:
             self.set_status_bar_info("%s - done" % info)
+            print(output)  # print redirect output back to console ;)
+
+        self.output_callback(text="", end="\n")
 
         return output
 
     def _uninstall(self, package_name):
-        print("Uninstall app: %r" % package_name)
+        self.output_callback("_" * 80)
+        self.output_callback("Uninstall app: %r" % package_name)
         self.subprocess("adb", "shell", "pm", "uninstall", "--user", "0", package_name, timeout=3)
 
     def _disable_user(self, package_name):
-        print("Disable app: %r" % package_name)
+        self.output_callback("_" * 80)
+        self.output_callback("Disable app: %r" % package_name)
         self.subprocess("adb", "shell", "pm", "disable-user", package_name, timeout=3)
 
     def _action(self, action_func):
