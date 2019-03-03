@@ -90,7 +90,7 @@ class ScrollableTreeview(ttk.Frame):
 
     def set_row_background_color(self, row, color):
         tagname = self.row2tagname(row)
-        self.tree.tag_configure(tagname, background=color)
+        self.tree.tag_configure(tagname, background=color, foreground="#000000")
 
     def set_text(self, *, item, column, text):
         self.tree.set(item, column, text)
@@ -238,7 +238,7 @@ class AdbUninstaller(tk.Tk):
         self.status_frame = ttk.Labelframe(p, text="Status", height=50)
         p.add(self.status_frame)
 
-        self.info_text = ScrolledText(self.status_frame, bg="white", height=10)
+        self.info_text = ScrolledText(self.status_frame, height=10)
         self.info_text.grid(row=0, column=0, sticky=tk.NSEW)
         self.info_text.columnconfigure(0, weight=1)
         self.info_text.rowconfigure(0, weight=1)
