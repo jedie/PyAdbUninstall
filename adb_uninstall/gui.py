@@ -16,11 +16,12 @@
 import logging
 import subprocess
 import sys
+from pprint import pprint
 
+import procrunner
 from adb_uninstall import __version__
 from adb_uninstall.adb_package import Package, Packages
 from adb_uninstall.constants import COLOR_GREY_RED, COLOR_LIGHT_GREEN, COLOR_LIGHT_RED
-from adb_uninstall.subprocess2 import iter_subprocess_output
 from adb_uninstall.tk_automenu import automenu
 from adb_uninstall.tk_statusbar import MultiStatusBar
 
@@ -90,7 +91,7 @@ class ScrollableTreeview(ttk.Frame):
 
     def set_row_background_color(self, row, color):
         tagname = self.row2tagname(row)
-        self.tree.tag_configure(tagname, background=color)
+        self.tree.tag_configure(tagname, background=color, foreground="#000000")
 
     def set_text(self, *, item, column, text):
         self.tree.set(item, column, text)
@@ -238,7 +239,7 @@ class AdbUninstaller(tk.Tk):
         self.status_frame = ttk.Labelframe(p, text="Status", height=50)
         p.add(self.status_frame)
 
-        self.info_text = ScrolledText(self.status_frame, bg="white", height=10)
+        self.info_text = ScrolledText(self.status_frame, height=10)
         self.info_text.grid(row=0, column=0, sticky=tk.NSEW)
         self.info_text.columnconfigure(0, weight=1)
         self.info_text.rowconfigure(0, weight=1)
@@ -288,17 +289,30 @@ class AdbUninstaller(tk.Tk):
         text = " ".join([str(part) for part in args])
         self.output_callback(text, end="")
 
-    def subprocess(self, *args, timeout=10):
+    def _stdout_handler(self, line):
+        self.output_callback(line, end="")
+
+    def _stderr_handler(self, line):
+        self.output_callback(line, end="")
+
+    def subprocess(self, *args, timeout=10, callback_stdout=None, callback_stderr=None):
         info = " ".join(args)
         self.set_status_bar_info("%s..." % info)
-        try:
-            for line in iter_subprocess_output(*args, timeout=timeout):
-                self.output_callback(line, end="")
-        except subprocess.CalledProcessError as err:
-            print("ERROR: %s" % err)
-            self.set_status_bar_info("%s - ERROR" % info)
-        else:
-            self.set_status_bar_info("%s - done" % info)
+
+        if callback_stdout is None:
+            callback_stdout = self._stdout_handler
+
+        if callback_stderr is None:
+            callback_stderr = self._stderr_handler
+
+        result = procrunner.run(
+            args, timeout=timeout,
+            #callback_stdout=callback_stdout, callback_stderr=callback_stderr
+        )
+        pprint(result)
+        exit_code = result["exitcode"]
+        print("(Process finished with exit code %r)\n\n" % exit_code)
+        self.set_status_bar_info("%s - done, exit code: %r" % exit_code)
 
     def _uninstall(self, package_name):
         print("Uninstall app: %r" % package_name)
@@ -341,23 +355,24 @@ class AdbUninstaller(tk.Tk):
 
         self.subprocess("adb", "devices", "-l", timeout=3)
 
+    packages = []
+
+    def _collect_packages(self, stdout_line):
+        if stdout_line.startswith("package:"):
+            self.output_callback(".", end="")
+            package_name = stdout_line[8:].strip()
+            self.packages.append(package_name)
+
     def fetch_package_list(self, *args):
         self.output_callback("Fetch package list via adb...")
 
-        packages = []
-        try:
-            for line in iter_subprocess_output("adb", "shell", "pm", "list", "packages"):
-                if line.startswith("package:"):
-                    self.output_callback(".", end="")
-                    package_name = line[8:].strip()
-                    packages.append(package_name)
+        self.packages = []
+        self.subprocess("adb", "shell", "pm", "list", "packages", timeout=10, callback_stdout=self._collect_packages)
 
-        except subprocess.CalledProcessError as err:
-            self.output_callback("ERROR: %s" % err)
-            return
+        if not self.packages:
+            print("ERROR: No packages!")
 
-        for no, package in enumerate(sorted(packages)):
-            # self.output_callback(package)
+        for no, package in enumerate(sorted(self.packages)):
             self.package_table.add(package)
 
     # def new(self, *args):
