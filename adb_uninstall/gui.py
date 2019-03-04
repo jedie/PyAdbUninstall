@@ -221,6 +221,8 @@ class AdbUninstaller(tk.Tk):
         p = ttk.Panedwindow(self, orient=tk.VERTICAL)
 
         self.list_frame = ttk.Labelframe(p, text="Package List", height=100)
+        self.list_frame.columnconfigure(0, weight=1)
+        self.list_frame.rowconfigure(0, weight=1)
         p.add(self.list_frame)
 
         self.packages = Packages()
@@ -242,6 +244,8 @@ class AdbUninstaller(tk.Tk):
         self.package_table.rowconfigure(0, weight=1)
 
         self.status_frame = ttk.Labelframe(p, text="Status", height=50)
+        self.status_frame.columnconfigure(0, weight=1)
+        self.status_frame.rowconfigure(0, weight=1)
         p.add(self.status_frame)
 
         self.info_text = ScrolledText(self.status_frame, height=10)
