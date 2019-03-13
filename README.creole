@@ -116,7 +116,6 @@ $ adb shell pm uninstall -k --user 0 <packagname>
 
 == help wanted
 
-* Fix tkinter GUI (scaling the app)
 * Complete {{{LOCKED_APPS}}} list (see above)
 
 Pull Requests are welcome ;)
