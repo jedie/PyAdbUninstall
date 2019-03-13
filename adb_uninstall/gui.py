@@ -333,9 +333,15 @@ class AdbUninstaller(tk.Tk):
 
     def _action(self, action_func):
         packages = self.packages.index2package.values()
+
+        removed_packages = []
         for package in packages:
             if package.remove:
+                removed_packages.append(package)
                 action_func(package_name=package.package_name)
+
+        if not removed_packages:
+            messagebox.showinfo(title="Info", message="No packages selected !")
 
     def uninstall_apps(self):
         self._action(action_func=self._uninstall)
