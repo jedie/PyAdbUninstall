@@ -60,7 +60,9 @@ class ScrollableTreeview(ttk.Frame):
         self.scrollbar_x = ttk.Scrollbar(self, orient=tk.HORIZONTAL, command=self.tree.xview)
         self.scrollbar_y = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.tree.yview)
 
-        self.tree.configure(xscrollcommand=self.scrollbar_x.set, yscrollcommand=self.scrollbar_y.set)
+        self.tree.configure(
+            xscrollcommand=self.scrollbar_x.set,
+            yscrollcommand=self.scrollbar_y.set)
 
         self.tree.grid(row=0, column=0, sticky=tk.NSEW)
         self.scrollbar_x.grid(row=1, column=0, sticky=tk.EW)
@@ -80,7 +82,8 @@ class ScrollableTreeview(ttk.Frame):
 
     def add(self, *, values):
         # print("add:", values)
-        self.tree.insert("", tk.END, tag=self.row2tagname(self.row_count), text=values[0], values=values[1:])
+        self.tree.insert("", tk.END, tag=self.row2tagname(
+            self.row_count), text=values[0], values=values[1:])
         self.row_count += 1
         return self.row_count - 1
 
@@ -236,8 +239,6 @@ class AdbUninstaller(tk.Tk):
         self.list_frame.rowconfigure(0, weight=1)
         p.add(self.list_frame)
 
-        self.packages = Packages()
-
         actions = {
             "list devices": self.list_devices,
             # "fetch package": self.fetch_package_list,
@@ -318,7 +319,8 @@ class AdbUninstaller(tk.Tk):
         output = None
         try:
             with RedirectStdoutStderr(
-                stdout_write=self.stdout_redirect_handler, stderr_write=self.stdout_redirect_handler, tee=True
+                stdout_write=self.stdout_redirect_handler,
+                stderr_write=self.stdout_redirect_handler, tee=True
             ):
                 output = verbose_check_output(*args, timeout=timeout)
         except subprocess.CalledProcessError as err:
