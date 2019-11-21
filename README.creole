@@ -95,21 +95,17 @@ $ adb shell pm uninstall -k --user 0 <packagname>
 * {{{--user 0}}} - Deinstall only for current user
 
 
-== dev. startup
+== Startup
 
 {{{
 # clone repository from github:
 ~$ git clone https://github.com/jedie/PyAdbUninstall.git
 
-# create virtualenv
 ~$ cd PyAdbUninstall
-~/PyAdbUninstall$ ./create_env.sh
-
-# activate virtualenv
-~/PyAdbUninstall$ source bin/activate
+~/PyAdbUninstall$ pipenv sync
 
 # Start GUI:
-(.virtualenv) ~/PyAdbUninstall$ adb_uninstall
+~/PyAdbUninstall$ pipenv run adb_uninstall
 }}}
 
 

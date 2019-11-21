@@ -1,7 +1,0 @@
-# https://pypi.org/project/adb/
-# https://github.com/google/python-adb
-#adb
-
-python-creole
-wheel
-twine
