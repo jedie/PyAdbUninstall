@@ -2,7 +2,7 @@ import logging
 import subprocess
 import webbrowser
 
-from adb_uninstall.constants import GOOGLE_PLAY_URL, LOCKED_APPS
+from adb_uninstall.constants import EXODUS_PRIVACY_URL, GOOGLE_PLAY_URL, LOCKED_APPS
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +47,9 @@ class Package:
 
     def open_play_google(self):
         webbrowser.open_new_tab(GOOGLE_PLAY_URL % self.package_name)
+
+    def open_exodus_privacy(self):
+        webbrowser.open_new_tab(EXODUS_PRIVACY_URL % self.package_name)
 
     def __str__(self):
         return "%i %r %r" % (self.index, self.action, self.package_name)

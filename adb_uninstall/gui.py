@@ -110,7 +110,15 @@ class PackageTable(ttk.Frame):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        self.tree = ScrollableTreeview(parent=parent, columns=("Package", "Link", "Action"), call_back=self.call_back)
+        self.tree = ScrollableTreeview(
+            parent=parent,
+            columns=(
+                "Package",
+                "Visit Google Play",
+                "Visit Exodus Privacy",
+                "Action"),
+            call_back=self.call_back
+        )
         self.tree.grid(row=0, column=0, sticky=tk.NSEW)
         self.tree.columnconfigure(0, weight=1)
         self.tree.rowconfigure(0, weight=1)
@@ -134,7 +142,8 @@ class PackageTable(ttk.Frame):
             info = Package.KEEP
             color = COLOR_LIGHT_GREEN
 
-        row = self.tree.add(values=(package_name, "open play.google.com", info))
+        row = self.tree.add(
+            values=(package_name, "open play.google.com", "open exodus-privacy.eu.org", info))
         assert isinstance(row, int)
 
         self.tree.set_row_background_color(row=row, color=color)
@@ -149,7 +158,9 @@ class PackageTable(ttk.Frame):
 
         if column == "#1":
             package.open_play_google()
-        elif column in ("#0", "#2"):
+        elif column == "#2":
+            package.open_exodus_privacy()
+        elif column in ("#0", "#3"):
             if package.locked:
                 print("ignore locked app")
                 return
@@ -163,7 +174,7 @@ class PackageTable(ttk.Frame):
             else:
                 raise RuntimeError("?!?")
 
-            self.tree.set_text(item=item, column="#2", text=package.action)
+            self.tree.set_text(item=item, column="#3", text=package.action)
 
 
 class AdbUninstaller(tk.Tk):
